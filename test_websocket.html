@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+</head>
+<body>
+    <h1>Book Notifications (Real-time)</h1>
+    
+    <div id="status">Connecting...</div>
+    <hr>
+    
+    <h3>Messages:</h3>
+    <div id="messages" style="border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll;">
+    </div>
+    
+    <hr>
+    <button onclick="sendPing()">Send Ping</button>
+    <button onclick="getBookCount()">Get Book Count</button>
+    
+    <script>
+        const ws = new WebSocket('ws://localhost:8000/ws/books/');
+        
+        ws.onopen = function(e) {
+            document.getElementById('status').innerHTML = '✅ Connected to WebSocket';
+            document.getElementById('status').style.color = 'green';
+            addMessage('Connection established!');
+        };
+        
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            console.log('Message from server:', data);
+            
+            if (data.type === 'book_created') {
+                addMessage(`🆕 New Book Created: ${data.book.title}`, 'green');
+            } else if (data.type === 'book_deleted') {
+                addMessage(`🗑️ ${data.message}`, 'red');
+            } else if (data.type === 'book_count') {
+                addMessage(`📚 Total Books: ${data.count}`, 'blue');
+            } else if (data.type === 'pong') {
+                addMessage(`🏓 Pong: ${data.message}`, 'orange');
+            } else {
+                addMessage(JSON.stringify(data), 'gray');
+            }
+        };
+        
+        ws.onclose = function(event) {
+            document.getElementById('status').innerHTML = '❌ Disconnected';
+            document.getElementById('status').style.color = 'red';
+            addMessage('Connection closed');
+        };
+        
+        ws.onerror = function(error) {
+            addMessage('Error: ' + error.message, 'red');
+        };
+        
+        function addMessage(message, color = 'black') {
+            const messagesDiv = document.getElementById('messages');
+            const time = new Date().toLocaleTimeString();
+            messagesDiv.innerHTML += `<div style="color: ${color};">[${time}] ${message}</div>`;
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function sendPing() {
+            ws.send(JSON.stringify({
+                type: 'ping'
+            }));
+        }
+        
+        function getBookCount() {
+            ws.send(JSON.stringify({
+                type: 'get_book_count'
+            }));
+        }
+    </script>
+</body>
+</html>
